@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Ragdoll Archers</title>
+  <link rel="icon" type="image/png" href="spinner.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,9 +30,18 @@
     </div>
   </div>
 
+  <script src="local-sdk.js"></script>
   <script>
     const buildUrl = "Build";
     const loaderUrl = `${buildUrl}/loader.js`;
+    const search = new URLSearchParams(window.location.search);
+
+    if (!search.has("useLocalSdk")) {
+      search.set("useLocalSdk", "true");
+      const newUrl = `${window.location.pathname}?${search.toString()}${window.location.hash}`;
+      window.history.replaceState({}, "", newUrl);
+    }
+
     const config = {
       dataUrl: `${buildUrl}/build.data`,
       frameworkUrl: `${buildUrl}/build.framework.js`,
@@ -40,6 +50,12 @@
       companyName: "Ericetto",
       productName: "Ragdoll Archers",
       productVersion: "0.1",
+      cacheControl(url) {
+        if (url.endsWith(".data") || url.endsWith(".wasm")) {
+          return "must-revalidate";
+        }
+        return "no-store";
+      },
     };
 
     const container = document.querySelector("#unity-container");
@@ -58,6 +74,31 @@
       statusText.textContent = "Opening from a file. If loading fails, run a simple local web server in this folder.";
     }
 
+    function resumeAudioContexts() {
+      const contexts = [];
+      if (window.AudioContext && window.__audioContext instanceof window.AudioContext) {
+        contexts.push(window.__audioContext);
+      }
+      for (const context of contexts) {
+        if (context.state === "suspended") {
+          context.resume().catch(() => {});
+        }
+      }
+    }
+
+    function tryInitLocalSdk() {
+      try {
+        if (window.CrazyGames && window.CrazyGames.SDK && typeof window.CrazyGames.SDK.init === "function") {
+          window.CrazyGames.SDK.init({ debug: false }).catch((error) => {
+            console.error("Local CrazySDK init failed", error);
+          });
+        }
+      } catch (error) {
+        console.error("Failed to initialize local CrazySDK", error);
+      }
+    }
+
+    tryInitLocalSdk();
     loadingCover.style.display = "flex";
 
     const unityLoader = document.createElement("script");
@@ -69,6 +110,7 @@
       }).then((unityInstance) => {
         window.unityInstance = unityInstance;
         loadingCover.style.display = "none";
+        statusText.textContent = "";
       }).catch((message) => {
         statusText.textContent = "Game failed to start. Check README.txt for launch help.";
         alert(message);
@@ -84,6 +126,15 @@
       container.focus();
       window.focus();
       canvas.focus();
+      resumeAudioContexts();
+    });
+
+    window.addEventListener("error", (event) => {
+      console.error("Window error", event.error || event.message);
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+      console.error("Unhandled promise rejection", event.reason);
     });
   </script>
 </body>

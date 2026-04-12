@@ -122,6 +122,138 @@
       window.history.replaceState({}, "", newUrl);
     }
 
+    function installCrazyGamesSdkBlocker() {
+      const blockedPatterns = [
+        /crazygames-sdk/i,
+        /crazygames\.com/i,
+        /cza\.crazygames\.com/i,
+      ];
+
+      const localCrazyGames = window.CrazyGames;
+      const localCrazySDK = window.CrazySDK;
+
+      const isBlockedUrl = (value) => {
+        if (!value || typeof value !== "string") {
+          return false;
+        }
+        return blockedPatterns.some((pattern) => pattern.test(value));
+      };
+
+      const blockScriptElement = (node) => {
+        if (!node || node.nodeType !== 1) {
+          return false;
+        }
+
+        const tagName = String(node.tagName || "").toLowerCase();
+        const src = node.getAttribute && node.getAttribute("src");
+        if (tagName === "script" && isBlockedUrl(src)) {
+          console.info("Blocked public CrazyGames SDK script", src);
+          node.type = "javascript/blocked";
+          node.removeAttribute("src");
+          return true;
+        }
+
+        return false;
+      };
+
+      const originalAppendChild = Node.prototype.appendChild;
+      Node.prototype.appendChild = function patchedAppendChild(node) {
+        if (blockScriptElement(node)) {
+          return node;
+        }
+        return originalAppendChild.call(this, node);
+      };
+
+      const originalInsertBefore = Node.prototype.insertBefore;
+      Node.prototype.insertBefore = function patchedInsertBefore(node, referenceNode) {
+        if (blockScriptElement(node)) {
+          return node;
+        }
+        return originalInsertBefore.call(this, node, referenceNode);
+      };
+
+      const originalReplaceChild = Node.prototype.replaceChild;
+      Node.prototype.replaceChild = function patchedReplaceChild(node, oldChild) {
+        if (blockScriptElement(node)) {
+          return oldChild;
+        }
+        return originalReplaceChild.call(this, node, oldChild);
+      };
+
+      const originalFetch = window.fetch ? window.fetch.bind(window) : null;
+      if (originalFetch) {
+        window.fetch = function patchedFetch(resource, init) {
+          const url = typeof resource === "string" ? resource : resource?.url;
+          if (isBlockedUrl(url)) {
+            console.info("Blocked CrazyGames fetch", url);
+            return Promise.resolve(new Response("", {
+              status: 204,
+              statusText: "Blocked local SDK mode",
+            }));
+          }
+          return originalFetch(resource, init);
+        };
+      }
+
+      const originalOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function patchedOpen(method, url, ...rest) {
+        this.__crazyGamesBlocked = isBlockedUrl(String(url || ""));
+        this.__crazyGamesBlockedUrl = url;
+        if (this.__crazyGamesBlocked) {
+          console.info("Blocked CrazyGames XHR", url);
+          return originalOpen.call(this, method, "data:text/plain,", ...rest);
+        }
+        return originalOpen.call(this, method, url, ...rest);
+      };
+
+      try {
+        Object.defineProperty(window, "CrazyGames", {
+          configurable: false,
+          enumerable: true,
+          get() {
+            return localCrazyGames;
+          },
+          set(value) {
+            console.info("Ignored public CrazyGames overwrite attempt", value);
+          },
+        });
+      } catch (error) {
+        console.warn("Failed to lock window.CrazyGames", error);
+      }
+
+      try {
+        Object.defineProperty(window, "CrazySDK", {
+          configurable: false,
+          enumerable: true,
+          get() {
+            return localCrazySDK;
+          },
+          set(value) {
+            console.info("Ignored public CrazySDK overwrite attempt", value);
+          },
+        });
+      } catch (error) {
+        console.warn("Failed to lock window.CrazySDK", error);
+      }
+
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (blockScriptElement(node) && node.parentNode) {
+              node.parentNode.removeChild(node);
+            }
+          }
+        }
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+
+      console.info("Local CrazyGames SDK guard enabled");
+    }
+
     function installGithubPagesSiteLockBypass() {
       const host = window.location.hostname.toLowerCase();
       if (!host.endsWith("github.io")) {
@@ -163,6 +295,7 @@
       console.info("GitHub Pages SiteLock compatibility mode enabled");
     }
 
+    installCrazyGamesSdkBlocker();
     installGithubPagesSiteLockBypass();
 
     const config = {

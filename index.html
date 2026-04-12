@@ -128,6 +128,7 @@
         /crazygames\.com/i,
         /cza\.crazygames\.com/i,
       ];
+      const localSdkUrl = new URL("local-sdk.js", window.location.href).href;
 
       const localCrazyGames = window.CrazyGames;
       const localCrazySDK = window.CrazySDK;
@@ -147,10 +148,9 @@
         const tagName = String(node.tagName || "").toLowerCase();
         const src = node.getAttribute && node.getAttribute("src");
         if (tagName === "script" && isBlockedUrl(src)) {
-          console.info("Blocked public CrazyGames SDK script", src);
-          node.type = "javascript/blocked";
-          node.removeAttribute("src");
-          return true;
+          console.info("Redirected public CrazyGames SDK script to local shim", src);
+          node.setAttribute("src", localSdkUrl);
+          return false;
         }
 
         return false;
@@ -185,11 +185,8 @@
         window.fetch = function patchedFetch(resource, init) {
           const url = typeof resource === "string" ? resource : resource?.url;
           if (isBlockedUrl(url)) {
-            console.info("Blocked CrazyGames fetch", url);
-            return Promise.resolve(new Response("", {
-              status: 204,
-              statusText: "Blocked local SDK mode",
-            }));
+            console.info("Redirected CrazyGames fetch to local shim", url);
+            return originalFetch(localSdkUrl, init);
           }
           return originalFetch(resource, init);
         };
@@ -200,8 +197,8 @@
         this.__crazyGamesBlocked = isBlockedUrl(String(url || ""));
         this.__crazyGamesBlockedUrl = url;
         if (this.__crazyGamesBlocked) {
-          console.info("Blocked CrazyGames XHR", url);
-          return originalOpen.call(this, method, "data:text/plain,", ...rest);
+          console.info("Redirected CrazyGames XHR to local shim", url);
+          return originalOpen.call(this, method, localSdkUrl, ...rest);
         }
         return originalOpen.call(this, method, url, ...rest);
       };

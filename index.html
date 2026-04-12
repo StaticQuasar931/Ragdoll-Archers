@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Ragdoll Archers</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+    <div id="unity-container" class="unity-shell unity-desktop">
+      <canvas id="unity-canvas" tabindex="-1" aria-label="Ragdoll Archers game canvas"></canvas>
+      <div id="loading-cover" class="loading-cover">
+        <div class="loading-panel">
+          <div id="unity-logo" class="logo-wrap">
+            <img src="logo.jpeg" alt="Ragdoll Archers logo">
+          </div>
+          <div class="progress-spinner-container">
+            <div class="spinner-left"><img src="spinner.png" alt=""></div>
+            <div id="unity-progress-bar-empty">
+              <div id="unity-progress-bar-full"></div>
+            </div>
+            <div class="spinner-right"><img src="spinner.png" alt=""></div>
+          </div>
+          <p id="status-text">Loading game files...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const buildUrl = "Build";
+    const loaderUrl = `${buildUrl}/loader.js`;
+    const config = {
+      dataUrl: `${buildUrl}/build.data`,
+      frameworkUrl: `${buildUrl}/build.framework.js`,
+      codeUrl: `${buildUrl}/build.wasm`,
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "Ericetto",
+      productName: "Ragdoll Archers",
+      productVersion: "0.1",
+    };
+
+    const container = document.querySelector("#unity-container");
+    const canvas = document.querySelector("#unity-canvas");
+    const loadingCover = document.querySelector("#loading-cover");
+    const progressBarEmpty = document.querySelector("#unity-progress-bar-empty");
+    const progressBarFull = document.querySelector("#unity-progress-bar-full");
+    const statusText = document.querySelector("#status-text");
+
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      container.classList.remove("unity-desktop");
+      container.classList.add("unity-mobile");
+    }
+
+    if (location.protocol === "file:") {
+      statusText.textContent = "Opening from a file. If loading fails, run a simple local web server in this folder.";
+    }
+
+    loadingCover.style.display = "flex";
+
+    const unityLoader = document.createElement("script");
+    unityLoader.src = loaderUrl;
+    unityLoader.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        progressBarEmpty.style.display = "block";
+        progressBarFull.style.width = `${Math.round(progress * 100)}%`;
+      }).then((unityInstance) => {
+        window.unityInstance = unityInstance;
+        loadingCover.style.display = "none";
+      }).catch((message) => {
+        statusText.textContent = "Game failed to start. Check README.txt for launch help.";
+        alert(message);
+      });
+    };
+    unityLoader.onerror = () => {
+      statusText.textContent = "Missing loader.js file.";
+    };
+
+    document.body.appendChild(unityLoader);
+
+    document.addEventListener("pointerdown", () => {
+      container.focus();
+      window.focus();
+      canvas.focus();
+    });
+  </script>
+</body>
+</html>

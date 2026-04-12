@@ -7,8 +7,8 @@
     joinRoom: new Set(),
     adblockPopup: new Set(),
   };
-
-  const store = new Map();
+  const LOCAL_GAME_ID = "local";
+  const LOCAL_STORAGE_KEY = `SDK_DATA_${LOCAL_GAME_ID}`;
 
   const logger = {
     log: (...args) => console.log("[Local CrazySDK]", ...args),
@@ -38,6 +38,33 @@
       url.searchParams.set(key, String(value));
     });
     return url.toString();
+  }
+
+  function readWrappedData() {
+    try {
+      const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && parsed.data && typeof parsed.data === "object") {
+        return parsed.data;
+      }
+    } catch (error) {
+      logger.warn("Failed to read local SDK data", error);
+    }
+    return {};
+  }
+
+  function writeWrappedData(data) {
+    try {
+      const wrapped = {
+        data,
+        metadata: {
+          date: new Date().toISOString(),
+        },
+      };
+      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(wrapped));
+    } catch (error) {
+      logger.error("Failed to persist local SDK data", error);
+    }
   }
 
   const sdk = {
@@ -134,7 +161,7 @@
     get game() {
       return {
         link: window.location.href,
-        id: "ragdoll-archers-local",
+        id: LOCAL_GAME_ID,
         isInstantJoin: window.location.search.includes("instantJoin=true"),
         isInstantMultiplayer: window.location.search.includes("instantJoin=true"),
         inviteParams: null,
@@ -243,16 +270,21 @@
     get data() {
       return {
         clear() {
-          store.clear();
+          writeWrappedData({});
         },
         getItem(key) {
-          return store.has(key) ? store.get(key) : null;
+          const data = readWrappedData();
+          return Object.prototype.hasOwnProperty.call(data, key) ? data[key] : null;
         },
         removeItem(key) {
-          store.delete(key);
+          const data = readWrappedData();
+          delete data[key];
+          writeWrappedData(data);
         },
         setItem(key, value) {
-          store.set(key, String(value));
+          const data = readWrappedData();
+          data[key] = String(value);
+          writeWrappedData(data);
         },
         syncUnityGameData() {
           logger.log("syncUnityGameData");

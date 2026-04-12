@@ -483,7 +483,7 @@ function configureEvents() {
   renderSummaries();
 
   ui.authPanelClose.addEventListener("click", () => {
-    setPanelOpen(true);
+    setPanelOpen(false);
   });
 
   ui.confirmCancel.addEventListener("click", () => closeConfirm(false));

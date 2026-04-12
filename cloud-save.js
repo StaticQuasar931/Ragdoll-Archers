@@ -317,6 +317,7 @@ function syncSignedInUi() {
   const signedIn = Boolean(state.currentUser);
   ui.signIn.hidden = signedIn;
   ui.signedInActions.hidden = !signedIn;
+  ui.authPanel.hidden = false;
 
   if (!signedIn) {
     ui.userName.textContent = "Not signed in";
@@ -328,7 +329,7 @@ function syncSignedInUi() {
   }
 
   const label = state.currentUser.displayName || state.currentUser.email || "Player";
-  ui.userName.textContent = label;
+  ui.userName.textContent = `Signed in as ${label}`;
   setAutosaveUi();
 }
 
@@ -482,7 +483,7 @@ function configureEvents() {
   renderSummaries();
 
   ui.authPanelClose.addEventListener("click", () => {
-    setPanelOpen(false);
+    setPanelOpen(true);
   });
 
   ui.confirmCancel.addEventListener("click", () => closeConfirm(false));

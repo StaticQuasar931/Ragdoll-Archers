@@ -11,9 +11,12 @@
 <body>
   <aside id="auth-panel" class="auth-panel" aria-label="Cloud save panel">
     <div class="auth-panel-header">
-      <div>
-        <h1 class="auth-title">Google Saves</h1>
-        <p class="auth-subtitle">Sign in to back up Season 5 progress and import your Season 3 save safely.</p>
+      <div id="auth-header-left" class="auth-header-left">
+        <img src="https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/Google-logo-transparent-G.png" alt="Google">
+        <div>
+          <h1 class="auth-title">Continue with Google</h1>
+          <p class="auth-subtitle">Back up Season 5 progress and safely copy over your old Season 3 cloud save.</p>
+        </div>
       </div>
       <button id="auth-panel-close" class="icon-button" type="button" aria-label="Hide save panel">X</button>
     </div>
@@ -44,14 +47,16 @@
           <h2>This Device</h2>
           <pre id="local-summary">Checking local save...</pre>
         </section>
-        <section class="summary-card">
-          <h2>Season 5 Cloud</h2>
-          <pre id="current-cloud-summary">Sign in to check.</pre>
-        </section>
-        <section class="summary-card">
-          <h2>Season 3 Old Save</h2>
-          <pre id="legacy-cloud-summary">Sign in to check.</pre>
-        </section>
+        <div class="comparison-grid">
+          <section class="summary-card summary-card-compare">
+            <h2>Season 5 Cloud</h2>
+            <pre id="current-cloud-summary">Sign in to check.</pre>
+          </section>
+          <section class="summary-card summary-card-compare">
+            <h2>Season 3 Old Save</h2>
+            <pre id="legacy-cloud-summary">Sign in to check.</pre>
+          </section>
+        </div>
       </div>
 
       <p class="panel-note">

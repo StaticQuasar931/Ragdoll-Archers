@@ -42,6 +42,53 @@
       window.history.replaceState({}, "", newUrl);
     }
 
+    function installGithubPagesSiteLockBypass() {
+      const host = window.location.hostname.toLowerCase();
+      if (!host.endsWith("github.io")) {
+        return;
+      }
+
+      const safeUrl = "http://localhost/";
+      const defineReadonlyGetter = (target, key, value) => {
+        try {
+          Object.defineProperty(target, key, {
+            configurable: true,
+            enumerable: true,
+            get: () => value,
+          });
+        } catch (error) {
+          console.warn(`Failed to override ${key}`, error);
+        }
+      };
+
+      defineReadonlyGetter(document, "URL", safeUrl);
+      defineReadonlyGetter(document, "documentURI", safeUrl);
+
+      try {
+        const originalCreateElement = document.createElement.bind(document);
+        document.createElement = function patchedCreateElement(tagName, options) {
+          const element = originalCreateElement(tagName, options);
+          if (String(tagName).toLowerCase() === "a") {
+            try {
+              defineReadonlyGetter(element, "hostname", "localhost");
+              defineReadonlyGetter(element, "host", "localhost");
+              defineReadonlyGetter(element, "origin", "http://localhost");
+              defineReadonlyGetter(element, "protocol", "http:");
+            } catch (error) {
+              console.warn("Failed to patch anchor element", error);
+            }
+          }
+          return element;
+        };
+      } catch (error) {
+        console.warn("Failed to patch document.createElement", error);
+      }
+
+      console.info("GitHub Pages SiteLock compatibility mode enabled");
+    }
+
+    installGithubPagesSiteLockBypass();
+
     const config = {
       dataUrl: `${buildUrl}/build.data`,
       frameworkUrl: `${buildUrl}/build.framework.js`,

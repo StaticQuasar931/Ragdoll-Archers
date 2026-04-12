@@ -9,26 +9,13 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="static-menu" class="static-menu" role="region" aria-label="StaticQuasar menu">
-    <a href="https://sites.google.com/view/staticquasar931/gm3z" target="_blank" rel="noopener">More games by Static</a>
-    <button id="static-menu-close" type="button" aria-label="Hide menu for a while">Hide</button>
-  </div>
-
-  <a id="static-spotlight" class="static-spotlight" href="https://sites.google.com/view/staticquasar931/google-form" target="_blank" rel="noopener" aria-label="Static spotlight">
-    <img id="static-spotlight-image" src="https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/GoogleForm.png" alt="StaticQuasar931 spotlight">
-  </a>
-
-  <button id="auth-dock" class="auth-dock" type="button" aria-controls="auth-panel" aria-expanded="true">
-    Google Saves
-  </button>
-
   <aside id="auth-panel" class="auth-panel" aria-label="Cloud save panel">
     <div class="auth-panel-header">
       <div>
         <h1 class="auth-title">Google Saves</h1>
-        <p class="auth-subtitle">Season 5 cloud saves and old save import</p>
+        <p class="auth-subtitle">Sign in to back up Season 5 progress and import your Season 3 save safely.</p>
       </div>
-      <button id="auth-panel-close" class="icon-button" type="button" aria-label="Close save panel">X</button>
+      <button id="auth-panel-close" class="icon-button" type="button" aria-label="Hide save panel">X</button>
     </div>
 
     <button id="google-sign-in" class="primary-button" type="button">
@@ -40,14 +27,15 @@
         <div>
           <div id="user-name" class="user-name">Not signed in</div>
           <div id="save-status" class="save-status">Sign in to start syncing.</div>
+          <div id="last-saved" class="last-saved">Last saved: Never</div>
         </div>
         <button id="autosave-toggle" class="chip-button" type="button">Autosave: On</button>
       </div>
 
       <div class="action-grid">
         <button id="save-progress" class="secondary-button" type="button">Save to cloud</button>
-        <button id="load-cloud-save" class="secondary-button" type="button">Use cloud save</button>
-        <button id="import-old-save" class="secondary-button" type="button">Import old save</button>
+        <button id="load-cloud-save" class="secondary-button" type="button">Use Season 5 cloud save</button>
+        <button id="import-old-save" class="secondary-button" type="button">Import Season 3 old save</button>
         <button id="google-sign-out" class="secondary-button danger-button" type="button">Sign out</button>
       </div>
 
@@ -61,13 +49,16 @@
           <pre id="current-cloud-summary">Sign in to check.</pre>
         </section>
         <section class="summary-card">
-          <h2>Old Cloud Save</h2>
+          <h2>Season 3 Old Save</h2>
           <pre id="legacy-cloud-summary">Sign in to check.</pre>
         </section>
       </div>
 
       <p class="panel-note">
-        Loading a cloud save writes it to this device and asks for a reload so the running game picks it up cleanly.
+        Season 3 import is copy-only. It never overwrites your old save document. It only copies that progress into the new Season 5 save system.
+      </p>
+      <p class="panel-note panel-note-soft">
+        This page uses the local save path. Press G or K to hide or reopen this panel.
       </p>
     </div>
   </aside>

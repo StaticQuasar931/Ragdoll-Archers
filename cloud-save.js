@@ -29,32 +29,8 @@ const CURRENT_LOCAL_KEY = "SDK_DATA_local";
 const LEGACY_LOCAL_KEY = "data";
 const CURRENT_PAYLOAD_KEY = "data_v1";
 const AUTOSAVE_PREF_PREFIX = "ragdoll-archers-s5-autosave-";
-const STATIC_MENU_HIDE_KEY = "ragdoll-archers-static-menu-hidden-until";
-
-const SPOTLIGHT_ITEMS = [
-  {
-    image: "https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/GoogleForm.png",
-    href: "https://sites.google.com/view/staticquasar931/google-form",
-    alt: "StaticQuasar931 Google form",
-  },
-  {
-    image: "https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/Join_Our_DC_StaticQuassar931_lcplrf.png",
-    href: "https://discord.gg/DP2hM7RRhR",
-    alt: "Join the StaticQuasar931 Discord",
-  },
-  {
-    image: "https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/Follow-us--IG",
-    href: "https://www.instagram.com/freeschoolgamepage/",
-    alt: "Follow StaticQuasar931 on Instagram",
-  },
-];
 
 const ui = {
-  staticMenu: document.getElementById("static-menu"),
-  staticMenuClose: document.getElementById("static-menu-close"),
-  spotlight: document.getElementById("static-spotlight"),
-  spotlightImage: document.getElementById("static-spotlight-image"),
-  authDock: document.getElementById("auth-dock"),
   authPanel: document.getElementById("auth-panel"),
   authPanelClose: document.getElementById("auth-panel-close"),
   signIn: document.getElementById("google-sign-in"),
@@ -62,6 +38,7 @@ const ui = {
   signedInActions: document.getElementById("signed-in-actions"),
   userName: document.getElementById("user-name"),
   saveStatus: document.getElementById("save-status"),
+  lastSaved: document.getElementById("last-saved"),
   autosaveToggle: document.getElementById("autosave-toggle"),
   saveProgress: document.getElementById("save-progress"),
   loadCloudSave: document.getElementById("load-cloud-save"),
@@ -92,6 +69,7 @@ const state = {
   autosaveTimer: null,
   autosaveFingerprint: null,
   modalResolver: null,
+  lastSavedAt: null,
 };
 
 function numberValue(value) {
@@ -195,6 +173,26 @@ function setStatus(message) {
   ui.saveStatus.textContent = message;
 }
 
+function formatLastSaved(timestamp) {
+  if (!timestamp) {
+    return "Last saved: Never";
+  }
+
+  const date = new Date(timestamp);
+  const text = date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `Last saved: ${text}`;
+}
+
+function updateLastSaved(timestamp) {
+  state.lastSavedAt = timestamp || null;
+  ui.lastSaved.textContent = formatLastSaved(state.lastSavedAt);
+}
+
 function showToast(message) {
   ui.toast.textContent = message;
   ui.toast.hidden = false;
@@ -208,43 +206,6 @@ function showToast(message) {
 
 function setPanelOpen(open) {
   ui.authPanel.hidden = !open;
-  ui.authDock.setAttribute("aria-expanded", open ? "true" : "false");
-}
-
-function configureStaticMenu() {
-  const hiddenUntil = numberValue(window.localStorage.getItem(STATIC_MENU_HIDE_KEY));
-  if (hiddenUntil > Date.now()) {
-    ui.staticMenu.hidden = true;
-    window.setTimeout(() => {
-      ui.staticMenu.hidden = false;
-      window.localStorage.removeItem(STATIC_MENU_HIDE_KEY);
-    }, hiddenUntil - Date.now());
-  }
-
-  ui.staticMenuClose.addEventListener("click", () => {
-    const until = Date.now() + 180000;
-    window.localStorage.setItem(STATIC_MENU_HIDE_KEY, String(until));
-    ui.staticMenu.hidden = true;
-    window.setTimeout(() => {
-      ui.staticMenu.hidden = false;
-      window.localStorage.removeItem(STATIC_MENU_HIDE_KEY);
-    }, 180000);
-  });
-}
-
-function configureSpotlight() {
-  let index = 0;
-
-  const applyItem = () => {
-    const item = SPOTLIGHT_ITEMS[index];
-    ui.spotlight.href = item.href;
-    ui.spotlightImage.src = item.image;
-    ui.spotlightImage.alt = item.alt;
-    index = (index + 1) % SPOTLIGHT_ITEMS.length;
-  };
-
-  applyItem();
-  window.setInterval(applyItem, 12000);
 }
 
 function setAutosaveUi() {
@@ -283,6 +244,7 @@ async function saveSeason5CloudProgress(progress, mode = "manual") {
     updatedAt,
   };
   state.autosaveFingerprint = payload;
+  updateLastSaved(updatedAt);
   renderSummaries();
   return true;
 }
@@ -344,7 +306,7 @@ function renderSummaries() {
   );
   ui.legacyCloudSummary.textContent = formatProgress(
     state.legacyCloud?.progress || null,
-    "No old cloud save found.",
+    "No Season 3 old save found.",
   );
 
   ui.loadCloudSave.disabled = !state.currentCloud?.progress;
@@ -360,6 +322,7 @@ function syncSignedInUi() {
     ui.userName.textContent = "Not signed in";
     ui.currentCloudSummary.textContent = "Sign in to check.";
     ui.legacyCloudSummary.textContent = "Sign in to check.";
+    updateLastSaved(null);
     renderSummaries();
     return;
   }
@@ -408,11 +371,12 @@ async function refreshCloudState() {
     state.currentCloud = await readCloudDocument(CURRENT_COLLECTION, state.currentUser.uid);
     state.legacyCloud = await readCloudDocument(LEGACY_COLLECTION, state.currentUser.uid);
     renderSummaries();
+    updateLastSaved(state.currentCloud?.updatedAt || null);
 
     if (!state.currentCloud.exists && state.legacyCloud.exists) {
-      setStatus("Old cloud save found. You can import it into Season 5.");
+      setStatus("A Season 3 old save was found. You can copy it into Season 5.");
     } else if (state.currentCloud.exists && needsOverwriteWarning(state.currentCloud.progress)) {
-      setStatus("Season 5 cloud save found. Use cloud save only if you want to replace this device.");
+      setStatus("A Season 5 cloud save was found. Use it only if you want to replace this device.");
     } else if (state.currentCloud.exists) {
       setStatus("Season 5 cloud save ready.");
     } else {
@@ -422,6 +386,7 @@ async function refreshCloudState() {
     console.error("Failed to read cloud saves", error);
     state.currentCloud = null;
     state.legacyCloud = null;
+    updateLastSaved(null);
     renderSummaries();
     setStatus(`Cloud check failed: ${error.code || error.message || "unknown error"}`);
   }
@@ -448,7 +413,7 @@ async function handleManualSave() {
 
   try {
     await saveSeason5CloudProgress(progress, "manual");
-    setStatus("Saved current Season 5 progress to the cloud.");
+    setStatus("Season 5 progress saved to your Google account.");
     showToast("Season 5 progress saved.");
   } catch (error) {
     console.error("Save failed", error);
@@ -465,9 +430,9 @@ async function handleUseCloudSave() {
 
   if (needsOverwriteWarning(cloudProgress)) {
     const accepted = await openConfirm(
-      "Use cloud save?",
-      "This will replace the Season 5 progress currently stored on this device. You will need to reload the page after it finishes.",
-      "Use cloud save",
+      "Use Season 5 cloud save?",
+      "This will replace the Season 5 progress on this device with the cloud copy. Your Season 3 old save will not be changed.",
+      "Use Season 5 cloud save",
     );
     if (!accepted) {
       return;
@@ -475,6 +440,7 @@ async function handleUseCloudSave() {
   }
 
   writeCurrentLocalProgress(cloudProgress);
+  updateLastSaved(state.currentCloud?.updatedAt || null);
   renderSummaries();
   setStatus("Season 5 cloud save copied to this device. Reload to apply it.");
   showToast("Cloud save loaded. Reload the page to use it.");
@@ -483,15 +449,15 @@ async function handleUseCloudSave() {
 async function handleImportOldSave() {
   const legacyProgress = state.legacyCloud?.progress;
   if (!legacyProgress) {
-    setStatus("No old cloud save was found for this account.");
+    setStatus("No Season 3 old save was found for this account.");
     return;
   }
 
   if (needsOverwriteWarning(legacyProgress)) {
     const accepted = await openConfirm(
-      "Import old save?",
-      "This will convert your old save into the Season 5 format, replace the local Season 5 save on this device, and store it in the new cloud collection.",
-      "Import old save",
+      "Import Season 3 old save?",
+      "This copies your Season 3 old save into the Season 5 format. It does not overwrite the original Season 3 save document.",
+      "Import Season 3 old save",
     );
     if (!accepted) {
       return;
@@ -504,8 +470,8 @@ async function handleImportOldSave() {
   try {
     await saveSeason5CloudProgress(converted, "legacy-import");
     renderSummaries();
-    setStatus("Old save imported into Season 5. Reload to apply it.");
-    showToast("Old save imported. Reload the page to use it.");
+    setStatus("Season 3 old save copied into Season 5. Reload to apply it.");
+    showToast("Season 3 old save imported. Reload the page to use it.");
   } catch (error) {
     console.error("Old save import failed", error);
     setStatus(`Import failed: ${error.code || error.message || "unknown error"}`);
@@ -513,13 +479,7 @@ async function handleImportOldSave() {
 }
 
 function configureEvents() {
-  configureStaticMenu();
-  configureSpotlight();
   renderSummaries();
-
-  ui.authDock.addEventListener("click", () => {
-    setPanelOpen(ui.authPanel.hidden);
-  });
 
   ui.authPanelClose.addEventListener("click", () => {
     setPanelOpen(false);
@@ -536,7 +496,7 @@ function configureEvents() {
   ui.signIn.addEventListener("click", async () => {
     try {
       await signInWithPopup(auth, provider);
-      setStatus("Signed in. Checking Season 5 and old saves.");
+      setStatus("Signed in. Checking Season 5 and Season 3 saves.");
     } catch (error) {
       console.error("Sign in failed", error);
       if (error.code === "auth/unauthorized-domain") {
@@ -595,6 +555,7 @@ onAuthStateChanged(auth, async (user) => {
     stopAutosave();
     state.currentCloud = null;
     state.legacyCloud = null;
+    updateLastSaved(null);
     renderSummaries();
     return;
   }

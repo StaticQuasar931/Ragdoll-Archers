@@ -5,10 +5,86 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Ragdoll Archers</title>
-  <link rel="icon" type="image/png" href="spinner.png">
+  <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="static-menu" class="static-menu" role="region" aria-label="StaticQuasar menu">
+    <a href="https://sites.google.com/view/staticquasar931/gm3z" target="_blank" rel="noopener">More games by Static</a>
+    <button id="static-menu-close" type="button" aria-label="Hide menu for a while">Hide</button>
+  </div>
+
+  <a id="static-spotlight" class="static-spotlight" href="https://sites.google.com/view/staticquasar931/google-form" target="_blank" rel="noopener" aria-label="Static spotlight">
+    <img id="static-spotlight-image" src="https://cdn.jsdelivr.net/gh/StaticQuasar931/Images@main/GoogleForm.png" alt="StaticQuasar931 spotlight">
+  </a>
+
+  <button id="auth-dock" class="auth-dock" type="button" aria-controls="auth-panel" aria-expanded="true">
+    Google Saves
+  </button>
+
+  <aside id="auth-panel" class="auth-panel" aria-label="Cloud save panel">
+    <div class="auth-panel-header">
+      <div>
+        <h1 class="auth-title">Google Saves</h1>
+        <p class="auth-subtitle">Season 5 cloud saves and old save import</p>
+      </div>
+      <button id="auth-panel-close" class="icon-button" type="button" aria-label="Close save panel">X</button>
+    </div>
+
+    <button id="google-sign-in" class="primary-button" type="button">
+      Continue with Google
+    </button>
+
+    <div id="signed-in-actions" class="signed-in-actions" hidden>
+      <div class="user-row">
+        <div>
+          <div id="user-name" class="user-name">Not signed in</div>
+          <div id="save-status" class="save-status">Sign in to start syncing.</div>
+        </div>
+        <button id="autosave-toggle" class="chip-button" type="button">Autosave: On</button>
+      </div>
+
+      <div class="action-grid">
+        <button id="save-progress" class="secondary-button" type="button">Save to cloud</button>
+        <button id="load-cloud-save" class="secondary-button" type="button">Use cloud save</button>
+        <button id="import-old-save" class="secondary-button" type="button">Import old save</button>
+        <button id="google-sign-out" class="secondary-button danger-button" type="button">Sign out</button>
+      </div>
+
+      <div class="summary-grid">
+        <section class="summary-card">
+          <h2>This Device</h2>
+          <pre id="local-summary">Checking local save...</pre>
+        </section>
+        <section class="summary-card">
+          <h2>Season 5 Cloud</h2>
+          <pre id="current-cloud-summary">Sign in to check.</pre>
+        </section>
+        <section class="summary-card">
+          <h2>Old Cloud Save</h2>
+          <pre id="legacy-cloud-summary">Sign in to check.</pre>
+        </section>
+      </div>
+
+      <p class="panel-note">
+        Loading a cloud save writes it to this device and asks for a reload so the running game picks it up cleanly.
+      </p>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <div id="confirm-modal" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2 id="confirm-title">Confirm action</h2>
+      <p id="confirm-body">Are you sure?</p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="secondary-button" type="button">Cancel</button>
+        <button id="confirm-accept" class="primary-button" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <div class="page">
     <div id="unity-container" class="unity-shell unity-desktop">
       <canvas id="unity-canvas" tabindex="-1" aria-label="Ragdoll Archers game canvas"></canvas>
@@ -31,6 +107,7 @@
   </div>
 
   <script src="local-sdk.js"></script>
+  <script type="module" src="cloud-save.js"></script>
   <script>
     const buildUrl = "Build";
     const loaderUrl = `${buildUrl}/loader.js`;
@@ -69,14 +146,10 @@
         document.createElement = function patchedCreateElement(tagName, options) {
           const element = originalCreateElement(tagName, options);
           if (String(tagName).toLowerCase() === "a") {
-            try {
-              defineReadonlyGetter(element, "hostname", "localhost");
-              defineReadonlyGetter(element, "host", "localhost");
-              defineReadonlyGetter(element, "origin", "http://localhost");
-              defineReadonlyGetter(element, "protocol", "http:");
-            } catch (error) {
-              console.warn("Failed to patch anchor element", error);
-            }
+            defineReadonlyGetter(element, "hostname", "localhost");
+            defineReadonlyGetter(element, "host", "localhost");
+            defineReadonlyGetter(element, "origin", "http://localhost");
+            defineReadonlyGetter(element, "protocol", "http:");
           }
           return element;
         };
@@ -121,18 +194,6 @@
       statusText.textContent = "Opening from a file. If loading fails, run a simple local web server in this folder.";
     }
 
-    function resumeAudioContexts() {
-      const contexts = [];
-      if (window.AudioContext && window.__audioContext instanceof window.AudioContext) {
-        contexts.push(window.__audioContext);
-      }
-      for (const context of contexts) {
-        if (context.state === "suspended") {
-          context.resume().catch(() => {});
-        }
-      }
-    }
-
     function tryInitLocalSdk() {
       try {
         if (window.CrazyGames && window.CrazyGames.SDK && typeof window.CrazyGames.SDK.init === "function") {
@@ -173,7 +234,6 @@
       container.focus();
       window.focus();
       canvas.focus();
-      resumeAudioContexts();
     });
 
     window.addEventListener("error", (event) => {
